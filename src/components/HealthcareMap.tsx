@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Users, ClipboardList, ChartBar } from 'lucide-react';
+import { User, Users, ClipboardList, ChartBar, Eye, EyeOff } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // Tipos de datos para profesionales de salud
@@ -27,7 +27,9 @@ const sampleData: HealthcareProfessional[] = [
 // Componente para el marcador con información permanente
 const Marker: React.FC<{
   professional: HealthcareProfessional;
-}> = ({ professional }) => {
+  isVisible: boolean;
+  onToggleVisibility: () => void;
+}> = ({ professional, isVisible, onToggleVisibility }) => {
   const roleColor = professional.role === 'doctor' ? 'bg-blue-500' : 'bg-green-500';
   const roleText = professional.role === 'doctor' ? 'Médico' : 'Enfermero';
   
@@ -40,33 +42,46 @@ const Marker: React.FC<{
         transform: 'translate(-50%, -50%)',
       }}
     >
-      {/* Icono */}
-      <div className={`${roleColor} rounded-full p-2 shadow-md mb-2`}>
-        {professional.role === 'doctor' ? 
-          <User className="text-white" size={20} /> : 
-          <Users className="text-white" size={20} />
-        }
+      {/* Icono y botón de visibilidad */}
+      <div className="relative">
+        <div className={`${roleColor} rounded-full p-2 shadow-md mb-2`}>
+          {professional.role === 'doctor' ? 
+            <User className="text-white" size={20} /> : 
+            <Users className="text-white" size={20} />
+          }
+        </div>
+        <button
+          onClick={onToggleVisibility}
+          className="absolute -top-1 -right-1 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 transition-colors"
+        >
+          {isVisible ? 
+            <Eye size={14} className="text-gray-600" /> : 
+            <EyeOff size={14} className="text-gray-600" />
+          }
+        </button>
       </div>
       
-      {/* Tarjeta de información permanente */}
-      <div className={`bg-white rounded-lg shadow-lg p-3 min-w-[200px] border-l-4 ${roleColor} -mt-1`}>
-        <div className="font-bold text-sm truncate">{professional.name}</div>
-        <div className="text-xs text-gray-600 mb-2">{roleText}</div>
-        
-        <div className="flex items-center gap-2">
-          <ClipboardList size={14} className="text-gray-500" />
-          <div className="text-xs">
-            <span className="font-semibold">{professional.appointments}</span> Citas
+      {/* Tarjeta de información que ahora es condicional */}
+      {isVisible && (
+        <div className={`bg-white rounded-lg shadow-lg p-3 min-w-[200px] border-l-4 ${roleColor} -mt-1`}>
+          <div className="font-bold text-sm truncate">{professional.name}</div>
+          <div className="text-xs text-gray-600 mb-2">{roleText}</div>
+          
+          <div className="flex items-center gap-2">
+            <ClipboardList size={14} className="text-gray-500" />
+            <div className="text-xs">
+              <span className="font-semibold">{professional.appointments}</span> Citas
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 mt-1">
+            <ChartBar size={14} className="text-gray-500" />
+            <div className="text-xs">
+              <span className="font-semibold">{professional.evolutions}</span> Evoluciones
+            </div>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2 mt-1">
-          <ChartBar size={14} className="text-gray-500" />
-          <div className="text-xs">
-            <span className="font-semibold">{professional.evolutions}</span> Evoluciones
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -74,6 +89,7 @@ const Marker: React.FC<{
 // Componente principal del mapa
 const HealthcareMap: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'doctor' | 'nurse'>('all');
+  const [visibleMarkers, setVisibleMarkers] = useState<Set<number>>(new Set(sampleData.map(p => p.id)));
   const isMobile = useIsMobile();
   
   // Filtrar los datos según el filtro seleccionado
@@ -81,6 +97,18 @@ const HealthcareMap: React.FC = () => {
     filter === 'all' || p.role === filter
   );
   
+  const toggleMarkerVisibility = (id: number) => {
+    setVisibleMarkers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
   // Estadísticas para el panel lateral
   const totalDoctors = sampleData.filter(p => p.role === 'doctor').length;
   const totalNurses = sampleData.filter(p => p.role === 'nurse').length;
@@ -196,12 +224,14 @@ const HealthcareMap: React.FC = () => {
           }}></div>
         </div>
         
-        {/* Marcadores con información permanente */}
+        {/* Marcadores con información condicional */}
         <div className="absolute inset-0">
           {filteredData.map((professional) => (
             <Marker
               key={professional.id}
               professional={professional}
+              isVisible={visibleMarkers.has(professional.id)}
+              onToggleVisibility={() => toggleMarkerVisibility(professional.id)}
             />
           ))}
         </div>
