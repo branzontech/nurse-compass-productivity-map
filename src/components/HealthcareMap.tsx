@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { User, Users, Hospital, MapPin, ClipboardList, ChartBar } from 'lucide-react';
+import { User, Users, ClipboardList, ChartBar } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // Tipos de datos para profesionales de salud
@@ -25,87 +24,47 @@ const sampleData: HealthcareProfessional[] = [
   { id: 8, name: 'Enf. Díaz', role: 'nurse', appointments: 25, evolutions: 20, position: { x: 60, y: 75 } },
 ];
 
-// Componente para el marcador
+// Componente para el marcador con información permanente
 const Marker: React.FC<{
   professional: HealthcareProfessional;
-  selected: boolean;
-  onClick: () => void;
-}> = ({ professional, selected, onClick }) => {
+}> = ({ professional }) => {
   const roleColor = professional.role === 'doctor' ? 'bg-blue-500' : 'bg-green-500';
-  const sizeClass = selected ? 'scale-125 z-20' : '';
+  const roleText = professional.role === 'doctor' ? 'Médico' : 'Enfermero';
   
   return (
     <div
-      className={`absolute cursor-pointer transition-transform ${sizeClass}`}
+      className="absolute group"
       style={{
         left: `${professional.position.x}%`,
         top: `${professional.position.y}%`,
         transform: 'translate(-50%, -50%)',
       }}
-      onClick={onClick}
     >
-      <div className={`${roleColor} rounded-full p-2 shadow-md`}>
+      {/* Icono */}
+      <div className={`${roleColor} rounded-full p-2 shadow-md mb-2`}>
         {professional.role === 'doctor' ? 
           <User className="text-white" size={20} /> : 
           <Users className="text-white" size={20} />
         }
       </div>
-      {selected && (
-        <div className="absolute w-3 h-3 bg-white rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-ping" />
-      )}
-    </div>
-  );
-};
-
-// Componente para el popup de información
-const InfoPopup: React.FC<{
-  professional: HealthcareProfessional;
-  onClose: () => void;
-}> = ({ professional, onClose }) => {
-  const roleColor = professional.role === 'doctor' ? 'border-blue-500' : 'border-green-500';
-  const roleText = professional.role === 'doctor' ? 'Médico' : 'Enfermero';
-  
-  return (
-    <div className={`absolute z-30 bg-white rounded-lg shadow-xl p-4 w-64 border-l-4 ${roleColor}`}
-      style={{
-        left: `${professional.position.x}%`,
-        top: `${professional.position.y + 5}%`,
-        transform: 'translateX(-50%)',
-      }}
-    >
-      <button 
-        onClick={onClose}
-        className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-      >
-        &times;
-      </button>
-      <div className="font-bold text-lg">{professional.name}</div>
-      <div className="text-sm text-gray-600 mb-2">{roleText}</div>
       
-      <div className="flex items-center mt-2">
-        <ClipboardList size={16} className="text-gray-500 mr-2" />
-        <div className="text-sm">
-          <span className="font-semibold">{professional.appointments}</span> Citas asignadas
+      {/* Tarjeta de información permanente */}
+      <div className={`bg-white rounded-lg shadow-lg p-3 min-w-[200px] border-l-4 ${roleColor} -mt-1`}>
+        <div className="font-bold text-sm truncate">{professional.name}</div>
+        <div className="text-xs text-gray-600 mb-2">{roleText}</div>
+        
+        <div className="flex items-center gap-2">
+          <ClipboardList size={14} className="text-gray-500" />
+          <div className="text-xs">
+            <span className="font-semibold">{professional.appointments}</span> Citas
+          </div>
         </div>
-      </div>
-      
-      <div className="flex items-center mt-1">
-        <ChartBar size={16} className="text-gray-500 mr-2" />
-        <div className="text-sm">
-          <span className="font-semibold">{professional.evolutions}</span> Evoluciones
-        </div>
-      </div>
-      
-      <div className="mt-3 pt-2 border-t border-gray-200">
-        <div className="text-xs text-gray-500">Productividad</div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
-          <div 
-            className={`h-2.5 rounded-full ${professional.role === 'doctor' ? 'bg-blue-500' : 'bg-green-500'}`}
-            style={{ width: `${(professional.evolutions / professional.appointments) * 100}%` }}
-          ></div>
-        </div>
-        <div className="text-xs text-right mt-1">
-          {Math.round((professional.evolutions / professional.appointments) * 100)}%
+        
+        <div className="flex items-center gap-2 mt-1">
+          <ChartBar size={14} className="text-gray-500" />
+          <div className="text-xs">
+            <span className="font-semibold">{professional.evolutions}</span> Evoluciones
+          </div>
         </div>
       </div>
     </div>
@@ -114,7 +73,6 @@ const InfoPopup: React.FC<{
 
 // Componente principal del mapa
 const HealthcareMap: React.FC = () => {
-  const [selectedProfessional, setSelectedProfessional] = useState<HealthcareProfessional | null>(null);
   const [filter, setFilter] = useState<'all' | 'doctor' | 'nurse'>('all');
   const isMobile = useIsMobile();
   
@@ -236,31 +194,17 @@ const HealthcareMap: React.FC = () => {
             backgroundImage: 'linear-gradient(to right, #f0f0f080 1px, transparent 1px), linear-gradient(to bottom, #f0f0f080 1px, transparent 1px)',
             backgroundSize: '20px 20px',
           }}></div>
-          
-          <div className="absolute inset-0 flex items-center justify-center opacity-20">
-            <Hospital size={200} />
-          </div>
         </div>
         
-        {/* Marcadores */}
+        {/* Marcadores con información permanente */}
         <div className="absolute inset-0">
           {filteredData.map((professional) => (
             <Marker
               key={professional.id}
               professional={professional}
-              selected={selectedProfessional?.id === professional.id}
-              onClick={() => setSelectedProfessional(professional)}
             />
           ))}
         </div>
-        
-        {/* Popup de información */}
-        {selectedProfessional && (
-          <InfoPopup
-            professional={selectedProfessional}
-            onClose={() => setSelectedProfessional(null)}
-          />
-        )}
         
         {/* Leyenda */}
         <div className="absolute bottom-4 right-4 bg-white bg-opacity-90 p-3 rounded-md shadow-md">
